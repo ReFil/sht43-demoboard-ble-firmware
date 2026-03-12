@@ -51,6 +51,7 @@
 #include "app_service/networking/ble/gatt_service/TemperatureService.h"
 #include "app_service/nvm/ProductionParameters.h"
 #include "app_service/power_manager/BatteryMonitor.h"
+#include "app_service/screen/Screen.h"
 #include "app_service/sensor/Sht4x.h"
 #include "app_service/user_button/Button.h"
 #include "hal/Clock.h"
@@ -95,24 +96,29 @@ const uint32_t MagicKeywordValue = MAGIC_OTA_KEYWORD;
 PLACE_IN_SECTION("TAG_OTA_START")
 const uint32_t MagicKeywordAddress = (uint32_t)&MagicKeywordValue;
 
-/// Complete advertisement data template. The measurement values
-/// will be updated with every time event.
+/// Complete advertisement data template using BTHome format.
+/// The measurement values will be updated with every time event.
 static BleTypes_CompleteAdvertisementData_t gCompleteAdvData = {
+    // Flags AD element
     .adTypeSize = 2,
     .adTypeFlag = AD_TYPE_FLAGS,
     .adTypeValue = 0x06,
-    .adTypeManufacturerSize = LONG_MANUFACTURER_DATA_LENGTH,
-    .adTypeManufacturerFlag = AD_TYPE_MANUFACTURER_SPECIFIC_DATA,
-    .companyIdentifier = BLE_TYPES_SENSIRION_VENDOR_ID,
-    .sAdvT = 0x00,
-    .sampleType = 0x06,
-    .deviceIdLsb = 0xFF,
-    .deviceIdMsb = 0xFF,
-    .temperatureTicks = 0xFFFF,
-    .humidityTicks = 0xFFFF,
+    // BTHome Service Data AD element
+    .bthomeServiceDataLength = 12,  // 1 (type 0x16) + 2 (UUID) + 9 (payload)
+    .bthomeServiceDataType = 0x16,  // Service Data - 16-bit UUID
+    .bthomeUuid = 0xFCD2,           // BTHome UUID (little-endian)
+    .bthomeFrameControl = 0x40,     // Non-encrypted, BTHome version 2
+    .temperatureObjectId = 0x02,    // Temperature object ID
+    .temperatureValue = 0,
+    .humidityObjectId = 0x03,  // Humidity object ID
+    .humidityValue = 0,
+    .batteryObjectId = 0x01,  // Battery object ID
+    .batteryValue = 0,
+
+    // Local Name AD element
     .adTypeNameSize = 9,
     .adTypeNameFlag = AD_TYPE_COMPLETE_LOCAL_NAME,
-    .name = "",  // will be initialized later on
+    .name = "",  // will be initialized later
 };
 
 /// Define the length of the advertisement data
@@ -227,9 +233,7 @@ MessageListener_Listener_t* BleContext_BridgeInstance() {
 }
 
 void BleContext_StartBluetoothApp() {
-  uint16_t deviceId = ProductionParameters_GetUniqueDeviceId() & 0xFFFF;
-  gCompleteAdvData.deviceIdLsb = deviceId & 0xFF;
-  gCompleteAdvData.deviceIdMsb = (deviceId >> 8) & 0xFF;
+  //uint16_t deviceId = ProductionParameters_GetUniqueDeviceId() & 0xFFFF;
 
   // initialize device name in the complete advertisement data structure
   memcpy(gCompleteAdvData.name, (uint8_t*)ProductionParameters_GetDeviceName(),
@@ -465,17 +469,19 @@ static bool BleDefaultStateCb(Message_Message_t* message) {
     if (message->header.parameter1 == SHT4X_COMMAND_READ_SERIAL_NUMBER) {
       ShtService_SetSerialNumber(sensorMsg->data.serialNumer);
     } else {
-      gCompleteAdvData.temperatureTicks =
-          sensorMsg->data.measurement.temperatureTicks;
-      gCompleteAdvData.humidityTicks =
-          sensorMsg->data.measurement.humidityTicks;
-      /// this does not change the advertisement mode
+
+      // Update BTHome format (spec-compliant conversion factors)
+      float tempCelsius = Sht4x_TicksToTemperatureCelsius(
+          sensorMsg->data.measurement.temperatureTicks);
+      gCompleteAdvData.temperatureValue = (int16_t)(tempCelsius * 100.0f);
+      float humidityPercent =
+          Sht4x_TicksToHumidity(sensorMsg->data.measurement.humidityTicks);
+      gCompleteAdvData.humidityValue = (uint16_t)(humidityPercent * 100.0f);
 
       BleGap_AdvertiseRequest(&gBleApplicationContext,
                               gBleApplicationContext.currentAdvertisementMode);
 
-      TemperatureService_SetTemperature(Sht4x_TicksToTemperatureCelsius(
-          sensorMsg->data.measurement.temperatureTicks));
+      TemperatureService_SetTemperature(tempCelsius);
       HumidityService_SetHumidity(
           Sht4x_TicksToHumidity(sensorMsg->data.measurement.humidityTicks));
     }
@@ -536,6 +542,7 @@ static bool BleDefaultStateCb(Message_Message_t* message) {
       message->header.id == BATTERY_MONITOR_MESSAGE_ID_CAPACITY_CHANGE) {
     BatteryMonitor_Message_t* batteryMsg = (BatteryMonitor_Message_t*)message;
     BatteryService_SetBatteryLevel(batteryMsg->remainingCapacity);
+    gCompleteAdvData.batteryValue = batteryMsg->remainingCapacity;
     return true;
   }
 
@@ -735,6 +742,8 @@ static bool HandleServiceRequestResponse(Message_Message_t* message) {
       SERVICE_REQUEST_MESSAGE_ID_SET_ALTERNATIVE_DEVICE_NAME) {
     DeviceSettingsService_UpdateAlternativeDeviceName(
         (const char*)bleMsg->parameter.responsePtr);
+    memcpy(gCompleteAdvData.name,  (const char*)bleMsg->parameter.responsePtr,
+         sizeof(gCompleteAdvData.name));
     return true;
   }
   return false;
@@ -799,17 +808,10 @@ static void TrySendSampleFrames() {
 }
 
 static void UpdateAdvertiseSamplesEnable(bool isAdvertiseSamplesEnabled) {
-  // it is sufficient to just reduce the manufacturer data length
-  // in order to hide the values.
-  gBleApplicationContext.advertisementDataSize = SHORT_ADV_DATA_LENGTH;
-  gCompleteAdvData.adTypeManufacturerSize = SHORT_MANUFACTURER_DATA_LENGTH;
-  gCompleteAdvData.sAdvT = NO_ADV_ADV_TYPE;
-  gCompleteAdvData.sampleType = NO_ADV_SAMPLES_TYPE;
-  if (isAdvertiseSamplesEnabled) {
-    gBleApplicationContext.advertisementDataSize = LONG_ADV_DATA_LENGTH;
-    gCompleteAdvData.adTypeManufacturerSize = LONG_MANUFACTURER_DATA_LENGTH;
-    gCompleteAdvData.sAdvT = SHT_ADV_ADV_TYPE;
-    gCompleteAdvData.sampleType = SHT_ADV_SAMPLE_TYPE;
+  if (!isAdvertiseSamplesEnabled) {
+    // Turn off the display and disable updates to save battery
+    Screen_ClearAll();
+  } else {
   }
   DeviceSettingsService_UpdateIsAdvertiseDataEnabled(isAdvertiseSamplesEnabled);
 }

@@ -125,23 +125,31 @@ typedef union _tBleTypes_AdvertisementMode {
 } BleTypes_AdvertisementMode_t;
 
 /// Defines the complete advertisement data of the SHT4x Demo Board
-/// including temperature and humidity measurement values.
+/// including both Sensirion proprietary (manufacturer-specific) and
+/// BTHome format (service data) for temperature, humidity and battery reporting.
 typedef struct __attribute__((__packed__)) {
-  uint8_t adTypeSize;                         ///< size type
-  uint8_t adTypeFlag;                         ///< flag type
-  uint8_t adTypeValue;                        ///< value type
-  uint8_t adTypeNameSize;                     ///< size device name
-  uint8_t adTypeNameFlag;                     ///< type device name
-  uint8_t name[BLE_TYPES_LOCAL_NAME_LENGTH];  ///< local name
-  uint8_t adTypeManufacturerSize;             ///< size manufacturer
-  uint8_t adTypeManufacturerFlag;             ///< flag manufacturer
-  uint16_t companyIdentifier;                 ///< value manufacturer
-  uint8_t sAdvT;                              ///< advertisement type
-  uint8_t sampleType;                         ///< format tag of subsequent data
-  uint8_t deviceIdMsb;                        ///< device id lsb   (custom data)
-  uint8_t deviceIdLsb;                        ///< device id msb   (custom data)
-  uint16_t temperatureTicks;                  ///< temperature     (custom data)
-  uint16_t humidityTicks;                     ///< humidity        (custom data)
+  // Flags AD element (0x01)
+  uint8_t adTypeSize;   ///< Flags AD length (2)
+  uint8_t adTypeFlag;   ///< Flags type (0x01)
+  uint8_t adTypeValue;  ///< Flags value (0x06)
+
+  // Service Data AD element (0x16) - BTHome V2 format
+  uint8_t bthomeServiceDataLength;  ///< Service Data AD length
+  uint8_t bthomeServiceDataType;    ///< Service Data type (0x16)
+  uint16_t bthomeUuid;              ///< BTHome UUID (0xFCD2 little-endian)
+  // BTHome V2 payload
+  uint8_t bthomeFrameControl;   ///< BTHome frame control byte
+  uint8_t temperatureObjectId;  ///< BTHome temp object ID (0x02)
+  int16_t temperatureValue;     ///< Temperature in 0.01°C resolution
+  uint8_t humidityObjectId;     ///< BTHome humidity object ID (0x03)
+  uint16_t humidityValue;       ///< Humidity in 0.01% resolution (0-10000)
+  uint8_t batteryObjectId;      ///< BTHome battery object ID (0x01)
+  uint8_t batteryValue;         ///< Battery level in %
+
+    // Complete Local Name AD element (0x09)
+  uint8_t adTypeNameSize;                     ///< Name AD length (9)
+  uint8_t adTypeNameFlag;                     ///< Name type (0x09)
+  uint8_t name[BLE_TYPES_LOCAL_NAME_LENGTH];  ///< local name (8 bytes)
 } BleTypes_CompleteAdvertisementData_t;
 
 /// global context containing the variables common to all services
