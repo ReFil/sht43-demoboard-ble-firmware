@@ -57,11 +57,11 @@
 
 /// Defines the lower bound for the advertisement interval after
 /// the application was running even longer  5s
-#define LONG_LONG_ADVERTISE_INTERVAL_MIN (0x1F40)
+#define LONG_LONG_ADVERTISE_INTERVAL_MIN (0x1F40)*2
 
 /// Defines the upper bound for the advertisement interval after
 /// the application was running for some time 6s
-#define LONG_LONG_ADVERTISE_INTERVAL_MAX (0x2580)
+#define LONG_LONG_ADVERTISE_INTERVAL_MAX (0x2580)*2
 
 // Define the various readout intervals
 
@@ -72,12 +72,12 @@
 #define MEDIUM_READOUT_INTERVAL_S 2
 
 /// Readout interval that is selected after 5' without user interaction
-#define LONG_READOUT_INTERVAL_S 5
+#define LONG_READOUT_INTERVAL_S 10
 
 /// Defines the tx power that is used for ble transmission
 /// Current value 0dBm
 /// The values are defined in AN5270.pdf
-#define BLE_TX_POWER 0x19
+#define BLE_TX_POWER 0x11
 
 /// Count the number of elements in an array
 #define COUNT_OF(arr) (sizeof(arr) / sizeof((arr)[0]))

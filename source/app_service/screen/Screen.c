@@ -53,6 +53,9 @@
 /// reset the LCD.
 static bool _useStepUpConverter = false;
 
+/// Flag to enable/disable screen updates to save battery when display is off
+static bool _screenUpdatesEnabled = true;
+
 static LCD_HandleTypeDef gLcd;  ///< LCD peripheral handle
 
 /// Initialize the LCD peripheral
@@ -401,6 +404,10 @@ void Screen_DisplayDewPointSymbol(bool on) {
 }
 
 void Screen_UpdatePendingRequests() {
+  // Skip updates if screen updates are disabled to save battery
+  if (!_screenUpdatesEnabled) {
+    return;
+  }
   // HAL_LCD_UpdateDisplayRequest(&gLcd) blocks until the
   // request is completed - this is not required and takes a lot
   // of time in which the system stays running
@@ -414,6 +421,10 @@ void Screen_UpdatePendingRequests() {
 
 void Screen_ClearAll() {
   HAL_LCD_Clear(&gLcd);
+}
+
+void Screen_SetUpdatesEnabled(bool enabled) {
+  _screenUpdatesEnabled = enabled;
 }
 
 /// LCD MSP Initialization

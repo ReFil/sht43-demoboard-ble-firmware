@@ -291,4 +291,9 @@ void Screen_UpdatePendingRequests();
 /// Clear screen
 void Screen_ClearAll();
 
+/// Enable or disable screen updates to save battery when display is off
+///
+/// @param enabled Set to false to disable periodic screen updates, true to enable them
+void Screen_SetUpdatesEnabled(bool enabled);
+
 #endif  // SCREEN_H

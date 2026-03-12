@@ -811,7 +811,10 @@ static void UpdateAdvertiseSamplesEnable(bool isAdvertiseSamplesEnabled) {
   if (!isAdvertiseSamplesEnabled) {
     // Turn off the display and disable updates to save battery
     Screen_ClearAll();
+    Screen_SetUpdatesEnabled(false);
   } else {
+    // Re-enable display updates when advertising is enabled
+    Screen_SetUpdatesEnabled(true);
   }
   DeviceSettingsService_UpdateIsAdvertiseDataEnabled(isAdvertiseSamplesEnabled);
 }
