@@ -825,6 +825,9 @@ static void UpdateDeviceSettingCharacteristics(Message_Message_t* message) {
   UpdateAdvertiseSamplesEnable(settings->isAdvertiseDataEnabled);
   DeviceSettingsService_UpdateAlternativeDeviceName(settings->deviceName);
   DeviceSettingsService_UpdateIsLogEnabled(settings->isLogEnabled);
+  // Update the advertising name with the stored device name
+  memcpy(gCompleteAdvData.name, settings->deviceName,
+         sizeof(gCompleteAdvData.name));
 }
 
 static void SwitchBleOff() {
