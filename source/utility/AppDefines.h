@@ -57,11 +57,11 @@
 
 /// Defines the lower bound for the advertisement interval after
 /// the application was running even longer  5s
-#define LONG_LONG_ADVERTISE_INTERVAL_MIN (0x1F40)*2
+#define LONG_LONG_ADVERTISE_INTERVAL_MIN (0x1F40)
 
 /// Defines the upper bound for the advertisement interval after
 /// the application was running for some time 6s
-#define LONG_LONG_ADVERTISE_INTERVAL_MAX (0x2580)*2
+#define LONG_LONG_ADVERTISE_INTERVAL_MAX (0x2580)
 
 // Define the various readout intervals
 

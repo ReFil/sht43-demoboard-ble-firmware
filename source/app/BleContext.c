@@ -234,6 +234,7 @@ MessageListener_Listener_t* BleContext_BridgeInstance() {
 
 void BleContext_StartBluetoothApp() {
   //uint16_t deviceId = ProductionParameters_GetUniqueDeviceId() & 0xFFFF;
+  gBleApplicationContext.automaticBleOff = false;
 
   // initialize device name in the complete advertisement data structure
   memcpy(gCompleteAdvData.name, (uint8_t*)ProductionParameters_GetDeviceName(),
